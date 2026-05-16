@@ -9,19 +9,22 @@ module Family::BasiqConnectable
     Provider::BasiqAdapter.configured?
   end
 
-  def create_basiq_item!(email:, item_name: nil)
+  def create_basiq_item!(user:, item_name: nil)
     provider = Provider::BasiqAdapter.build_provider
     raise StandardError.new("BASIQ provider is not configured") unless provider
+    raise StandardError.new("BASIQ requires #{user.basiq_profile_missing_fields.to_sentence}") unless user.basiq_profile_complete?
 
-    user = provider.create_user(email: email)
+    basiq_user = provider.create_user(profile: user.basiq_profile_payload)
 
     basiq_items.create!(
       name: item_name || "BASIQ Connection",
-      basiq_user_id: user[:id] || user["id"]
+      basiq_user_id: basiq_user[:id] || basiq_user["id"]
     )
   end
 
-  def basiq_item_for_connection(email:)
-    basiq_items.active.first || create_basiq_item!(email: email)
+  def basiq_item_for_connection(user:)
+    basiq_item = basiq_items.active.first || create_basiq_item!(user: user)
+    basiq_item.refresh_basiq_profile!(user)
+    basiq_item
   end
 end

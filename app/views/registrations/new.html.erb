@@ -33,6 +33,31 @@
       label: true,
       disabled: @invitation.present? %>
 
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <%= form.text_field :first_name,
+        autocomplete: "given-name",
+        required: "required",
+        placeholder: "Gavin",
+        label: true %>
+
+    <%= form.text_field :last_name,
+        autocomplete: "family-name",
+        required: "required",
+        placeholder: "Belson",
+        label: true %>
+  </div>
+
+  <%= form.text_field :middle_name,
+      autocomplete: "additional-name",
+      placeholder: "Middle name",
+      label: true %>
+
+  <%= form.telephone_field :mobile_number,
+      autocomplete: "tel",
+      required: "required",
+      placeholder: "+61410888666",
+      label: true %>
+
   <% if invite_code_required? && !@invitation %>
     <%= form.text_field :invite_code, required: "required", label: true, value: params[:invite] %>
   <% end %>

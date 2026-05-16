@@ -27,6 +27,12 @@ module Api
           return
         end
 
+        signup_profile_errors = validate_signup_profile(params[:user])
+        if signup_profile_errors.any?
+          render json: { errors: signup_profile_errors }, status: :unprocessable_entity
+          return
+        end
+
         # Validate device info
         unless valid_device_info?
           render json: { error: "Device information is required" }, status: :bad_request
@@ -54,6 +60,8 @@ module Api
               id: user.id,
               email: user.email,
               first_name: user.first_name,
+              middle_name: user.middle_name,
+              mobile_number: user.mobile_number,
               last_name: user.last_name
             }
           ), status: :created
@@ -92,6 +100,8 @@ module Api
               id: user.id,
               email: user.email,
               first_name: user.first_name,
+              middle_name: user.middle_name,
+              mobile_number: user.mobile_number,
               last_name: user.last_name
             }
           )
@@ -146,7 +156,7 @@ module Api
       private
 
         def user_signup_params
-          params.require(:user).permit(:email, :password, :first_name, :last_name)
+          params.require(:user).permit(:email, :password, :first_name, :middle_name, :last_name, :mobile_number)
         end
 
         def validate_password(password)
@@ -161,6 +171,30 @@ module Api
           errors << "Password must include both uppercase and lowercase letters" unless password.match?(/[A-Z]/) && password.match?(/[a-z]/)
           errors << "Password must include at least one number" unless password.match?(/\d/)
           errors << "Password must include at least one special character" unless password.match?(/[!@#$%^&*(),.?":{}|<>]/)
+
+          errors
+        end
+
+        def validate_signup_profile(user_params)
+          errors = []
+          errors << "First name can't be blank" if user_params[:first_name].blank?
+          errors << "Last name can't be blank" if user_params[:last_name].blank?
+
+          mobile_number = user_params[:mobile_number].to_s
+          normalized_mobile = mobile_number.gsub(/\D/, "")
+          valid_mobile = if normalized_mobile.start_with?("04") && normalized_mobile.length == 10
+            true
+          elsif normalized_mobile.start_with?("614") && normalized_mobile.length == 11
+            true
+          else
+            mobile_number.match?(/\A\+614\d{8}\z/)
+          end
+
+          if user_params[:mobile_number].blank?
+            errors << "Mobile number can't be blank"
+          elsif !valid_mobile
+            errors << "Mobile number must be a valid Australian mobile number"
+          end
 
           errors
         end

@@ -23,7 +23,8 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
                 email: "newuser@example.com",
                 password: "SecurePass123!",
                 first_name: "New",
-                last_name: "User"
+                last_name: "User",
+                mobile_number: "+61410888666"
               },
               device: @device_info
             }
@@ -39,6 +40,7 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
     assert_equal "newuser@example.com", response_data["user"]["email"]
     assert_equal "New", response_data["user"]["first_name"]
     assert_equal "User", response_data["user"]["last_name"]
+    assert_equal "+61410888666", response_data["user"]["mobile_number"]
 
     # OAuth token assertions
     assert response_data["access_token"].present?
@@ -62,7 +64,8 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
           email: "newuser@example.com",
           password: "SecurePass123!",
           first_name: "New",
-          last_name: "User"
+          last_name: "User",
+          mobile_number: "+61410888666"
         }
       }
     end
@@ -79,7 +82,8 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
           email: "newuser@example.com",
           password: "weak",
           first_name: "New",
-          last_name: "User"
+          last_name: "User",
+          mobile_number: "+61410888666"
         },
         device: @device_info
       }
@@ -99,7 +103,8 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
           email: existing_user.email,
           password: "SecurePass123!",
           first_name: "Duplicate",
-          last_name: "User"
+          last_name: "User",
+          mobile_number: "+61410888666"
         },
         device: @device_info
       }
@@ -114,7 +119,8 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
         email: "newuser@example.com",
         password: "SecurePass123!",
         first_name: "New",
-        last_name: "User"
+        last_name: "User",
+        mobile_number: "+61410888666"
       },
       device: @device_info
     }
@@ -137,7 +143,8 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
           email: "newuser@example.com",
           password: "SecurePass123!",
           first_name: "New",
-          last_name: "User"
+          last_name: "User",
+          mobile_number: "+61410888666"
         },
         device: @device_info
       }
@@ -162,7 +169,8 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
             email: "newuser@example.com",
             password: "SecurePass123!",
             first_name: "New",
-            last_name: "User"
+            last_name: "User",
+            mobile_number: "+61410888666"
           },
           device: @device_info,
           invite_code: invite_code.token
@@ -183,7 +191,8 @@ class Api::V1::AuthControllerTest < ActionDispatch::IntegrationTest
           email: "newuser@example.com",
           password: "SecurePass123!",
           first_name: "New",
-          last_name: "User"
+          last_name: "User",
+          mobile_number: "+61410888666"
         },
         device: @device_info,
         invite_code: "invalid_code"

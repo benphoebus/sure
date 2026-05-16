@@ -19,7 +19,9 @@ class User < ApplicationRecord
 
     # PII - names (non-deterministic for maximum security)
     encrypts :first_name
+    encrypts :middle_name
     encrypts :last_name
+    encrypts :mobile_number
   end
 
   belongs_to :family
@@ -48,7 +50,9 @@ class User < ApplicationRecord
   normalizes :email, with: ->(email) { email.strip.downcase }
   normalizes :unconfirmed_email, with: ->(email) { email&.strip&.downcase }
 
-  normalizes :first_name, :last_name, with: ->(value) { value.strip.presence }
+  normalizes :first_name, :middle_name, :last_name, with: ->(value) { value.strip.presence }
+  before_validation :normalize_mobile_number
+  validate :mobile_number_is_valid_australian_mobile, if: -> { mobile_number.present? }
 
   enum :role, { member: "member", admin: "admin", super_admin: "super_admin" }, validate: true
 
@@ -113,6 +117,32 @@ class User < ApplicationRecord
 
   def display_name
     [ first_name, last_name ].compact.join(" ").presence || email
+  end
+
+  def basiq_profile_complete?
+    email.present? &&
+      first_name.present? &&
+      last_name.present? &&
+      valid_australian_mobile_number?(normalized_australian_mobile_number(mobile_number))
+  end
+
+  def basiq_profile_missing_fields
+    fields = []
+    fields << "email" if email.blank?
+    fields << "first name" if first_name.blank?
+    fields << "last name" if last_name.blank?
+    fields << "valid Australian mobile number" unless valid_australian_mobile_number?(normalized_australian_mobile_number(mobile_number))
+    fields
+  end
+
+  def basiq_profile_payload
+    {
+      email: email,
+      mobile: normalized_australian_mobile_number(mobile_number),
+      firstName: first_name,
+      middleName: middle_name.to_s,
+      lastName: last_name
+    }
   end
 
   def initial
@@ -307,6 +337,33 @@ class User < ApplicationRecord
   end
 
   private
+    def normalize_mobile_number
+      self.mobile_number = normalized_australian_mobile_number(mobile_number)
+    end
+
+    def normalized_australian_mobile_number(value)
+      digits = value.to_s.gsub(/\D/, "")
+      return nil if digits.blank?
+
+      if digits.start_with?("04") && digits.length == 10
+        "+61#{digits.delete_prefix("0")}"
+      elsif digits.start_with?("614") && digits.length == 11
+        "+#{digits}"
+      else
+        value.to_s.strip.presence
+      end
+    end
+
+    def mobile_number_is_valid_australian_mobile
+      return if valid_australian_mobile_number?(mobile_number)
+
+      errors.add(:mobile_number, "must be a valid Australian mobile number")
+    end
+
+    def valid_australian_mobile_number?(value)
+      value.to_s.match?(/\A\+614\d{8}\z/)
+    end
+
     def skip_password_validation?
       skip_password_validation == true
     end

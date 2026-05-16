@@ -27,7 +27,8 @@ class Provider::Basiq
     expires_in = (token_data[:expires_in] || token_data["expires_in"] || 3600).to_i
     raise BasiqError.new("BASIQ token response did not include access_token", :token_failed) if token.blank?
 
-    Rails.cache.write(token_cache_key, token, expires_in: [ expires_in - 60, 60 ].max.seconds)
+    expiry_buffer = [ expires_in / 10, 300 ].min
+    Rails.cache.write(token_cache_key, token, expires_in: [ expires_in - expiry_buffer, 1 ].max.seconds)
     token
   end
 
@@ -39,8 +40,12 @@ class Provider::Basiq
     token
   end
 
-  def create_user(email:)
-    post_json("/users", { email: email })
+  def create_user(profile:)
+    post_json("/users", profile)
+  end
+
+  def update_user(user_id, profile:)
+    post_json("/users/#{escape(user_id)}", profile)
   end
 
   def get_user(user_id)
@@ -103,7 +108,9 @@ class Provider::Basiq
 
     def get_json(path_or_url, query: nil)
       log_request(:get, path_or_url, query: query)
-      response = self.class.get(absolute_url(path_or_url), headers: bearer_headers, query: query.presence)
+      response = with_fresh_bearer_token_on_unauthorized do
+        self.class.get(absolute_url(path_or_url), headers: bearer_headers, query: query.presence)
+      end
       log_response(:get, path_or_url, response)
       handle_response(response)
     rescue SocketError, Net::OpenTimeout, Net::ReadTimeout => e
@@ -112,11 +119,13 @@ class Provider::Basiq
 
     def post_json(path, body)
       log_request(:post, path, body: body)
-      response = self.class.post(
-        "#{base_url}#{path}",
-        headers: bearer_headers.merge("Content-Type" => "application/json"),
-        body: body.to_json
-      )
+      response = with_fresh_bearer_token_on_unauthorized do
+        self.class.post(
+          "#{base_url}#{path}",
+          headers: bearer_headers.merge("Content-Type" => "application/json"),
+          body: body.to_json
+        )
+      end
 
       log_response(:post, path, response)
       handle_response(response)
@@ -126,7 +135,9 @@ class Provider::Basiq
 
     def delete_json(path)
       log_request(:delete, path)
-      response = self.class.delete("#{base_url}#{path}", headers: bearer_headers)
+      response = with_fresh_bearer_token_on_unauthorized do
+        self.class.delete("#{base_url}#{path}", headers: bearer_headers)
+      end
       log_response(:delete, path, response)
       return {} if response.code == 204
 
@@ -180,6 +191,14 @@ class Provider::Basiq
     def token_cache_key
       cache_identity = [ base_url, version, api_key ].join(":")
       "#{TOKEN_CACHE_KEY_PREFIX}:#{Digest::SHA256.hexdigest(cache_identity)}"
+    end
+
+    def with_fresh_bearer_token_on_unauthorized
+      response = yield
+      return response unless response.code.to_i == 401
+
+      Rails.cache.delete(token_cache_key)
+      yield
     end
 
     def handle_response(response)

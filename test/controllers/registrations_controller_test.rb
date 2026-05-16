@@ -9,6 +9,9 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
   test "create redirects to correct URL" do
     post registration_url, params: { user: {
       email: "john@example.com",
+      first_name: "John",
+      last_name: "Example",
+      mobile_number: "+61410888666",
       password: "Password1!" } }
 
     assert_redirected_to root_url
@@ -21,6 +24,9 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_difference "User.count", +1 do
       post registration_url, params: { user: {
         email: "firstuser@example.com",
+        first_name: "First",
+        last_name: "User",
+        mobile_number: "+61410888666",
         password: "Password1!" } }
     end
 
@@ -35,6 +41,9 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
     assert_difference "User.count", +1 do
       post registration_url, params: { user: {
         email: "seconduser@example.com",
+        first_name: "Second",
+        last_name: "User",
+        mobile_number: "+61410888667",
         password: "Password1!" } }
     end
 
@@ -48,11 +57,17 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
       assert_no_difference "User.count" do
         post registration_url, params: { user: {
           email: "john@example.com",
+          first_name: "John",
+          last_name: "Example",
+          mobile_number: "+61410888666",
           password: "Password1!" } }
         assert_redirected_to new_registration_url
 
         post registration_url, params: { user: {
           email: "john@example.com",
+          first_name: "John",
+          last_name: "Example",
+          mobile_number: "+61410888666",
           password: "Password1!",
           invite_code: "foo" } }
         assert_redirected_to new_registration_url
@@ -61,6 +76,9 @@ class RegistrationsControllerTest < ActionDispatch::IntegrationTest
       assert_difference "User.count", +1 do
         post registration_url, params: { user: {
           email: "john@example.com",
+          first_name: "John",
+          last_name: "Example",
+          mobile_number: "+61410888666",
           password: "Password1!",
           invite_code: InviteCode.generate! } }
         assert_redirected_to root_url

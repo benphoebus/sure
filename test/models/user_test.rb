@@ -71,6 +71,33 @@ class UserTest < ActiveSupport::TestCase
     assert_equal "Dylan", @user.last_name
   end
 
+  test "australian mobile number is normalized" do
+    @user.update!(mobile_number: "0410 888 666")
+
+    assert_equal "+61410888666", @user.mobile_number
+  end
+
+  test "basiq profile payload includes required user fields" do
+    @user.update!(
+      first_name: "Gavin",
+      middle_name: "",
+      last_name: "Belson",
+      mobile_number: "0410888666"
+    )
+
+    assert @user.basiq_profile_complete?
+    assert_equal(
+      {
+        email: @user.email,
+        mobile: "+61410888666",
+        firstName: "Gavin",
+        middleName: "",
+        lastName: "Belson"
+      },
+      @user.basiq_profile_payload
+    )
+  end
+
   # MFA Tests
   test "setup_mfa! generates required fields" do
     user = users(:family_member)

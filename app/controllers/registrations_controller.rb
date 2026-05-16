@@ -8,6 +8,7 @@ class RegistrationsController < ApplicationController
   before_action :set_invitation
   before_action :claim_invite_code, only: :create, if: :invite_code_required?
   before_action :validate_password_requirements, only: :create
+  before_action :validate_basiq_signup_requirements, only: :create
 
   def new
     @user = User.new(email: @invitation&.email)
@@ -46,7 +47,7 @@ class RegistrationsController < ApplicationController
     end
 
     def user_params(specific_param = nil)
-      params = self.params.require(:user).permit(:name, :email, :password, :password_confirmation, :invite_code, :invitation)
+      params = self.params.require(:user).permit(:name, :email, :first_name, :middle_name, :last_name, :mobile_number, :password, :password_confirmation, :invite_code, :invitation)
       specific_param ? params[specific_param] : params
     end
 
@@ -79,6 +80,24 @@ class RegistrationsController < ApplicationController
       if @user.errors.present?
         render :new, status: :unprocessable_entity
       end
+    end
+
+    def validate_basiq_signup_requirements
+      if @user.first_name.blank?
+        @user.errors.add(:first_name, "can't be blank")
+      end
+
+      if @user.last_name.blank?
+        @user.errors.add(:last_name, "can't be blank")
+      end
+
+      if @user.mobile_number.blank?
+        @user.errors.add(:mobile_number, "can't be blank")
+      elsif !@user.basiq_profile_payload[:mobile].to_s.match?(/\A\+614\d{8}\z/)
+        @user.errors.add(:mobile_number, "must be a valid Australian mobile number")
+      end
+
+      render :new, status: :unprocessable_entity if @user.errors.present?
     end
 
     def ensure_signup_open

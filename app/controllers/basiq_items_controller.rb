@@ -14,7 +14,12 @@ class BasiqItemsController < ApplicationController
       return
     end
 
-    basiq_item = Current.family.basiq_item_for_connection(email: Current.user.email)
+    unless Current.user.basiq_profile_complete?
+      redirect_to settings_profile_path, alert: missing_basiq_profile_message
+      return
+    end
+
+    basiq_item = Current.family.basiq_item_for_connection(user: Current.user)
     Rails.logger.info("BASIQ consent start: basiq_item_id=#{basiq_item.id} basiq_user_id=#{basiq_item.basiq_user_id}") if Rails.configuration.x.basiq.debug_raw
     redirect_url = basiq_item.start_consent(action: "connect", state: basiq_item.id)
     log_basiq_redirect(redirect_url, state: basiq_item.id)
@@ -27,6 +32,8 @@ class BasiqItemsController < ApplicationController
   rescue Provider::Basiq::BasiqError => e
     Rails.logger.error "BASIQ authorization error: #{e.message}"
     redirect_to settings_providers_path, alert: "Failed to start BASIQ authorization: #{e.message}"
+  rescue StandardError => e
+    redirect_to settings_profile_path, alert: "Failed to start BASIQ authorization: #{e.message}"
   end
 
   def callback
@@ -67,6 +74,12 @@ class BasiqItemsController < ApplicationController
   end
 
   def new_connection
+    unless Current.user.basiq_profile_complete?
+      redirect_to settings_profile_path, alert: missing_basiq_profile_message
+      return
+    end
+
+    @basiq_item.refresh_basiq_profile!(Current.user)
     Rails.logger.info("BASIQ consent start: basiq_item_id=#{@basiq_item.id} basiq_user_id=#{@basiq_item.basiq_user_id}") if Rails.configuration.x.basiq.debug_raw
     redirect_url = @basiq_item.start_consent(action: "connect", state: @basiq_item.id)
     log_basiq_redirect(redirect_url, state: @basiq_item.id)
@@ -78,6 +91,8 @@ class BasiqItemsController < ApplicationController
     )
   rescue Provider::Basiq::BasiqError => e
     redirect_to accounts_path, alert: "Failed to start BASIQ authorization: #{e.message}"
+  rescue StandardError => e
+    redirect_to settings_profile_path, alert: "Failed to start BASIQ authorization: #{e.message}"
   end
 
   def setup_accounts
@@ -204,6 +219,10 @@ class BasiqItemsController < ApplicationController
 
     def set_basiq_item
       @basiq_item = Current.family.basiq_items.find(params[:id])
+    end
+
+    def missing_basiq_profile_message
+      "BASIQ requires #{Current.user.basiq_profile_missing_fields.to_sentence} before linking an Australian bank."
     end
 
     def extract_job_ids

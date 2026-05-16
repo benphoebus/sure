@@ -41,6 +41,12 @@ class BasiqItem < ApplicationRecord
     provider.consent_url(client_token: client_token, state: state, action: action)
   end
 
+  def refresh_basiq_profile!(user)
+    raise StandardError.new("BASIQ requires #{user.basiq_profile_missing_fields.to_sentence}") unless user.basiq_profile_complete?
+
+    basiq_provider.update_user(basiq_user_id, profile: user.basiq_profile_payload)
+  end
+
   def import_latest_basiq_data
     provider = basiq_provider
     unless provider

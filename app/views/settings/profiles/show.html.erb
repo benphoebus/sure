@@ -18,6 +18,11 @@
         <%= form.text_field :last_name, placeholder: t(".last_name"), label: t(".last_name") %>
       </div>
 
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <%= form.text_field :middle_name, placeholder: t(".middle_name", default: "Middle name"), label: t(".middle_name", default: "Middle name") %>
+        <%= form.telephone_field :mobile_number, placeholder: "+61410888666", label: t(".mobile_number", default: "Australian mobile number") %>
+      </div>
+
       <div class="flex justify-end mt-4">
         <%= render DS::Button.new(text: t(".save"), class: "md:w-auto w-full justify-center") %>
       </div>
