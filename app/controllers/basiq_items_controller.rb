@@ -15,7 +15,9 @@ class BasiqItemsController < ApplicationController
     end
 
     basiq_item = Current.family.basiq_item_for_connection(email: Current.user.email)
+    Rails.logger.info("BASIQ consent start: basiq_item_id=#{basiq_item.id} basiq_user_id=#{basiq_item.basiq_user_id}") if Rails.configuration.x.basiq.debug_raw
     redirect_url = basiq_item.start_consent(action: "connect", state: basiq_item.id)
+    log_basiq_redirect(redirect_url, state: basiq_item.id)
 
     safe_redirect_to_basiq(
       redirect_url,
@@ -28,6 +30,8 @@ class BasiqItemsController < ApplicationController
   end
 
   def callback
+    log_basiq_callback
+
     if params[:error].present?
       redirect_to accounts_path, alert: "BASIQ authorization failed: #{params[:error_description].presence || params[:error]}"
       return
@@ -63,7 +67,9 @@ class BasiqItemsController < ApplicationController
   end
 
   def new_connection
+    Rails.logger.info("BASIQ consent start: basiq_item_id=#{@basiq_item.id} basiq_user_id=#{@basiq_item.basiq_user_id}") if Rails.configuration.x.basiq.debug_raw
     redirect_url = @basiq_item.start_consent(action: "connect", state: @basiq_item.id)
+    log_basiq_redirect(redirect_url, state: @basiq_item.id)
 
     safe_redirect_to_basiq(
       redirect_url,
@@ -233,5 +239,26 @@ class BasiqItemsController < ApplicationController
       else
         redirect_to fallback_path, alert: fallback_alert
       end
+    end
+
+    def log_basiq_redirect(redirect_url, state:)
+      return unless Rails.configuration.x.basiq.debug_raw
+
+      uri = URI.parse(redirect_url)
+      params = Rack::Utils.parse_nested_query(uri.query)
+      params["token"] = "[FILTERED]" if params.key?("token")
+
+      Rails.logger.info(
+        "BASIQ consent redirect: host=#{uri.host} path=#{uri.path} state=#{state} params=#{params.inspect}"
+      )
+    rescue URI::InvalidURIError => e
+      Rails.logger.warn("BASIQ consent redirect parse failed: #{e.message}")
+    end
+
+    def log_basiq_callback
+      return unless Rails.configuration.x.basiq.debug_raw || params[:error].present?
+
+      callback_params = params.to_unsafe_h.slice("state", "jobId", "jobIds", "error", "error_description")
+      Rails.logger.info("BASIQ callback: #{callback_params.inspect}")
     end
 end

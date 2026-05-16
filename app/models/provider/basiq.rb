@@ -86,38 +86,47 @@ class Provider::Basiq
   private
 
     def request_token(scope:, **extra_params)
+      log_request(:post, "/token", body: { scope: scope }.merge(extra_params.compact))
+
       response = self.class.post(
         "#{base_url}/token",
         headers: basic_auth_headers.merge("Content-Type" => "application/x-www-form-urlencoded"),
         body: URI.encode_www_form({ scope: scope }.merge(extra_params.compact))
       )
 
+      log_response(:post, "/token", response)
       handle_response(response)
     rescue SocketError, Net::OpenTimeout, Net::ReadTimeout => e
       raise BasiqError.new("BASIQ token request failed: #{e.message}", :request_failed)
     end
 
     def get_json(path_or_url, query: nil)
+      log_request(:get, path_or_url, query: query)
       response = self.class.get(absolute_url(path_or_url), headers: bearer_headers, query: query.presence)
+      log_response(:get, path_or_url, response)
       handle_response(response)
     rescue SocketError, Net::OpenTimeout, Net::ReadTimeout => e
       raise BasiqError.new("BASIQ GET #{path_or_url} failed: #{e.message}", :request_failed)
     end
 
     def post_json(path, body)
+      log_request(:post, path, body: body)
       response = self.class.post(
         "#{base_url}#{path}",
         headers: bearer_headers.merge("Content-Type" => "application/json"),
         body: body.to_json
       )
 
+      log_response(:post, path, response)
       handle_response(response)
     rescue SocketError, Net::OpenTimeout, Net::ReadTimeout => e
       raise BasiqError.new("BASIQ POST #{path} failed: #{e.message}", :request_failed)
     end
 
     def delete_json(path)
+      log_request(:delete, path)
       response = self.class.delete("#{base_url}#{path}", headers: bearer_headers)
+      log_response(:delete, path, response)
       return {} if response.code == 204
 
       handle_response(response)
@@ -187,6 +196,68 @@ class Provider::Basiq
       else
         raise BasiqError.new("BASIQ API failed: #{response.code} #{response.message} - #{response.body}", :fetch_failed)
       end
+    end
+
+    def log_request(method, path_or_url, query: nil, body: nil)
+      return unless basiq_debug_raw?
+
+      Rails.logger.info(
+        "BASIQ API request: #{method.to_s.upcase} #{loggable_path(path_or_url)} " \
+        "query=#{sanitize_for_log(query).inspect} body=#{sanitize_for_log(body).inspect}"
+      )
+    end
+
+    def log_response(method, path_or_url, response)
+      return unless basiq_debug_raw? || response.code.to_i >= 400
+
+      body = if response.code.to_i >= 400 || basiq_debug_raw?
+        sanitize_response_body(response.body)
+      end
+
+      Rails.logger.info(
+        "BASIQ API response: #{method.to_s.upcase} #{loggable_path(path_or_url)} " \
+        "status=#{response.code} body=#{body.inspect}"
+      )
+    end
+
+    def basiq_debug_raw?
+      Rails.configuration.x.basiq.debug_raw
+    end
+
+    def sanitize_response_body(body)
+      return nil if body.blank?
+
+      parsed = JSON.parse(body)
+      sanitize_for_log(parsed)
+    rescue JSON::ParserError
+      body.to_s.gsub(/(access_token|refresh_token|token)=([^&\s]+)/i, "\\1=[FILTERED]")
+    end
+
+    def sanitize_for_log(value)
+      case value
+      when Hash
+        value.each_with_object({}) do |(key, v), result|
+          key = key.to_s
+          result[key] = sensitive_basiq_log_key?(key) ? "[FILTERED]" : sanitize_for_log(v)
+        end
+      when Array
+        value.map { |v| sanitize_for_log(v) }
+      else
+        value
+      end
+    end
+
+    def sensitive_basiq_log_key?(key)
+      key.match?(/token|authorization|api[_-]?key|secret|password/i)
+    end
+
+    def loggable_path(path_or_url)
+      uri = URI.parse(path_or_url.to_s)
+      return path_or_url unless uri.absolute?
+
+      [ uri.host, uri.path ].compact.join
+    rescue URI::InvalidURIError
+      path_or_url
     end
 
     def parse_response_body(response)
