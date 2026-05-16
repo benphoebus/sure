@@ -1,0 +1,29 @@
+<%= render DS::Dialog.new do |dialog| %>
+  <% dialog.with_header(title: "Link BASIQ account") %>
+
+  <% dialog.with_body do %>
+    <% if @available_basiq_accounts.any? %>
+      <div class="space-y-2">
+        <% @available_basiq_accounts.each do |basiq_account| %>
+          <%= button_to link_existing_account_basiq_items_path(account_id: @account.id, basiq_account_id: basiq_account.id),
+                        method: :post,
+                        data: { turbo_frame: :_top },
+                        class: "w-full text-left p-4 border border-primary rounded-lg hover:bg-container-hover transition-colors" do %>
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-medium text-primary"><%= basiq_account.name %></p>
+                <p class="text-sm text-secondary"><%= basiq_account.account_type_display %> · <%= basiq_account.currency %></p>
+              </div>
+              <%= icon("chevron-right", size: "sm", class: "text-secondary") %>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+    <% else %>
+      <div class="p-4 flex flex-col gap-3 items-center justify-center">
+        <p class="text-primary font-medium text-sm">No available BASIQ accounts</p>
+        <p class="text-secondary text-sm">Connect an Australian bank with BASIQ first.</p>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

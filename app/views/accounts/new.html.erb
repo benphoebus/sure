@@ -3,6 +3,17 @@
        <% if @provider_configs.any? { |c| c[:key] == "lunchflow" } %>
          data-controller="lunchflow-preload"
        <% end %>>
+    <div class="grid grid-cols-2 gap-1 p-1 mb-2 bg-surface rounded-lg">
+      <% [["us", "USA"], ["au", "AUS"]].each do |region, label| %>
+        <%= link_to label,
+                    new_account_path(region: region, classification: params[:classification], return_to: params[:return_to]),
+                    class: class_names(
+                      "text-center rounded-md px-3 py-2 text-sm font-medium",
+                      @provider_region == region ? "bg-container text-primary shadow-border-xs" : "text-secondary hover:text-primary"
+                    ) %>
+      <% end %>
+    </div>
+
     <% unless params[:classification] == "liability" %>
       <%= render "account_type", accountable: Depository.new %>
       <%= render "account_type", accountable: Investment.new %>

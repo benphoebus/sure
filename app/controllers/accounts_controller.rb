@@ -6,6 +6,7 @@ class AccountsController < ApplicationController
     @manual_accounts = family.accounts
           .listable_manual
           .order(:name)
+    @basiq_items = family.basiq_items.ordered.includes(:syncs, :basiq_accounts)
     @plaid_items = family.plaid_items.ordered.includes(:syncs, :plaid_accounts)
     @simplefin_items = family.simplefin_items.ordered.includes(:syncs)
     @lunchflow_items = family.lunchflow_items.ordered.includes(:syncs, :lunchflow_accounts)
@@ -24,10 +25,12 @@ class AccountsController < ApplicationController
   end
 
   def new
+    @provider_region = provider_region
     # Get all registered providers with any credentials configured
-    @provider_configs = Provider::Factory.registered_adapters.flat_map do |adapter_class|
+    provider_configs = Provider::Factory.registered_adapters.flat_map do |adapter_class|
       adapter_class.connection_configs(family: family)
     end
+    @provider_configs = Provider::Factory.filter_connection_configs_by_region(provider_configs, @provider_region)
   end
 
   def sync_all
@@ -162,7 +165,8 @@ class AccountsController < ApplicationController
     # Get all available provider configs dynamically for this account type
     provider_configs = Provider::Factory.connection_configs_for_account_type(
       account_type: account_type_name,
-      family: family
+      family: family,
+      region: provider_region
     )
 
     # Build available providers list with paths resolved for this specific account
@@ -193,6 +197,13 @@ class AccountsController < ApplicationController
 
     # Builds sync stats maps for all provider types to avoid N+1 queries in views
     def build_sync_stats_maps
+      # BASIQ sync stats
+      @basiq_sync_stats_map = {}
+      @basiq_items.each do |item|
+        latest_sync = item.syncs.ordered.first
+        @basiq_sync_stats_map[item.id] = latest_sync&.sync_stats || {}
+      end
+
       # SimpleFIN sync stats
       @simplefin_sync_stats_map = {}
       @simplefin_has_unlinked_map = {}
@@ -277,5 +288,12 @@ class AccountsController < ApplicationController
           .count
         @coinbase_unlinked_count_map[item.id] = count
       end
+    end
+
+    def provider_region
+      region = params[:region].to_s.downcase
+      return region if %w[au us].include?(region)
+
+      family.country.to_s.casecmp("AU").zero? ? "au" : "us"
     end
 end

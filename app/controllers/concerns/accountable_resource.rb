@@ -67,12 +67,21 @@ module AccountableResource
   private
     def set_link_options
       account_type_name = accountable_type.name
+      @provider_region = provider_region
 
       # Get all available provider configs dynamically for this account type
       @provider_configs = Provider::Factory.connection_configs_for_account_type(
         account_type: account_type_name,
-        family: Current.family
+        family: Current.family,
+        region: @provider_region
       )
+    end
+
+    def provider_region
+      region = params[:region].to_s.downcase
+      return region if %w[au us].include?(region)
+
+      Current.family.country.to_s.casecmp("AU").zero? ? "au" : "us"
     end
 
     def accountable_type

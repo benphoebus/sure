@@ -36,6 +36,7 @@ class Transaction < ApplicationRecord
       (transactions.extra -> 'simplefin' ->> 'pending')::boolean = true
       OR (transactions.extra -> 'plaid' ->> 'pending')::boolean = true
       OR (transactions.extra -> 'lunchflow' ->> 'pending')::boolean = true
+      OR (transactions.extra -> 'basiq' ->> 'pending')::boolean = true
     SQL
   }
 
@@ -44,6 +45,7 @@ class Transaction < ApplicationRecord
       (transactions.extra -> 'simplefin' ->> 'pending')::boolean IS DISTINCT FROM true
       AND (transactions.extra -> 'plaid' ->> 'pending')::boolean IS DISTINCT FROM true
       AND (transactions.extra -> 'lunchflow' ->> 'pending')::boolean IS DISTINCT FROM true
+      AND (transactions.extra -> 'basiq' ->> 'pending')::boolean IS DISTINCT FROM true
     SQL
   }
 
@@ -71,7 +73,8 @@ class Transaction < ApplicationRecord
     extra_data = extra.is_a?(Hash) ? extra : {}
     ActiveModel::Type::Boolean.new.cast(extra_data.dig("simplefin", "pending")) ||
       ActiveModel::Type::Boolean.new.cast(extra_data.dig("plaid", "pending")) ||
-      ActiveModel::Type::Boolean.new.cast(extra_data.dig("lunchflow", "pending"))
+      ActiveModel::Type::Boolean.new.cast(extra_data.dig("lunchflow", "pending")) ||
+      ActiveModel::Type::Boolean.new.cast(extra_data.dig("basiq", "pending"))
   rescue
     false
   end

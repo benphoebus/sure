@@ -1,0 +1,52 @@
+<%= render DS::Dialog.new do |dialog| %>
+  <% dialog.with_header(title: "Set up BASIQ accounts") %>
+
+  <% dialog.with_body do %>
+    <%= styled_form_with url: complete_account_setup_basiq_item_path(@basiq_item), method: :post, data: { turbo_frame: :_top } do |form| %>
+      <div class="space-y-4">
+        <%= form.date_field :sync_start_date,
+                            label: "Import transactions from",
+                            value: @basiq_item.sync_start_date || 3.months.ago.to_date %>
+
+        <% @basiq_accounts.each do |basiq_account| %>
+          <div class="p-3 rounded-lg border border-secondary space-y-3">
+            <div>
+              <p class="text-primary font-medium text-sm"><%= basiq_account.name %></p>
+              <p class="text-secondary text-xs">
+                <%= basiq_account.account_type_display %>
+                <% if basiq_account.current_balance.present? %>
+                  · <%= number_with_delimiter(basiq_account.current_balance) %> <%= basiq_account.currency %>
+                <% end %>
+              </p>
+            </div>
+
+            <% inferred_type = case basiq_account.account_type.to_s.downcase
+               when "credit-card", "credit_card", "card"
+                 "CreditCard"
+               when "loan", "mortgage"
+                 "Loan"
+               else
+                 "Depository"
+               end %>
+
+            <%= select_tag "account_types[#{basiq_account.id}]",
+                           options_for_select(@account_type_options, inferred_type),
+                           class: "w-full rounded-lg border border-secondary bg-container text-primary text-sm" %>
+
+            <%= select_tag "account_subtypes[#{basiq_account.id}]",
+                           grouped_options_for_select(
+                             @subtype_options.transform_values { |data| data[:options] }.compact,
+                             nil
+                           ),
+                           include_blank: "Subtype",
+                           class: "w-full rounded-lg border border-secondary bg-container text-primary text-sm" %>
+          </div>
+        <% end %>
+
+        <div class="flex justify-end">
+          <%= form.submit "Create accounts" %>
+        </div>
+      </div>
+    <% end %>
+  <% end %>
+<% end %>

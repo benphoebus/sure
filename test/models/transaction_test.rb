@@ -19,6 +19,12 @@ class TransactionTest < ActiveSupport::TestCase
     assert transaction.pending?
   end
 
+  test "pending? is true when extra.basiq.pending is truthy" do
+    transaction = Transaction.new(extra: { "basiq" => { "pending" => true } })
+
+    assert transaction.pending?
+  end
+
   test "pending? is false when no provider pending metadata is present" do
     transaction = Transaction.new(extra: { "plaid" => { "pending" => false } })
 

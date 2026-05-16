@@ -19,6 +19,7 @@ class Provider::EnableBankingAdapter < Provider::Base
       name: "Enable Banking",
       description: "Connect to your bank via Enable Banking",
       can_connect: true,
+      regions: %w[eu],
       new_account_path: ->(accountable_type, return_to) {
         Rails.application.routes.url_helpers.new_enable_banking_item_path(
           accountable_type: accountable_type

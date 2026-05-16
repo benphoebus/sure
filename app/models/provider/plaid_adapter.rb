@@ -34,6 +34,7 @@ class Provider::PlaidAdapter < Provider::Base
         name: "Plaid",
         description: "Connect to your US bank via Plaid",
         can_connect: true,
+        regions: %w[us],
         new_account_path: ->(accountable_type, return_to) {
           Rails.application.routes.url_helpers.new_plaid_item_path(
             region: "us",
@@ -56,6 +57,7 @@ class Provider::PlaidAdapter < Provider::Base
         name: "Plaid (EU)",
         description: "Connect to your EU bank via Plaid",
         can_connect: true,
+        regions: %w[eu],
         new_account_path: ->(accountable_type, return_to) {
           Rails.application.routes.url_helpers.new_plaid_item_path(
             region: "eu",

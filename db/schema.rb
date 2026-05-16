@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.2].define(version: 2026_01_29_200129) do
+ActiveRecord::Schema[7.2].define(version: 2026_02_01_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pgcrypto"
   enable_extension "plpgsql"
@@ -49,8 +49,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_29_200129) do
     t.string "institution_name"
     t.string "institution_domain"
     t.text "notes"
-    t.jsonb "holdings_snapshot_data"
-    t.datetime "holdings_snapshot_at"
     t.index ["accountable_id", "accountable_type"], name: "index_accounts_on_accountable_id_and_accountable_type"
     t.index ["accountable_type"], name: "index_accounts_on_accountable_type"
     t.index ["currency"], name: "index_accounts_on_currency"
@@ -149,6 +147,50 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_29_200129) do
     t.index ["account_id", "date", "currency"], name: "index_account_balances_on_account_id_date_currency_unique", unique: true
     t.index ["account_id", "date"], name: "index_balances_on_account_id_and_date", order: { date: :desc }
     t.index ["account_id"], name: "index_balances_on_account_id"
+  end
+
+  create_table "basiq_accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "basiq_item_id", null: false
+    t.string "name", null: false
+    t.string "account_id", null: false
+    t.string "connection_id"
+    t.string "institution_id"
+    t.string "currency", null: false
+    t.decimal "current_balance", precision: 19, scale: 4
+    t.decimal "available_balance", precision: 19, scale: 4
+    t.string "account_status"
+    t.string "account_type"
+    t.string "account_subtype"
+    t.string "provider"
+    t.string "masked_number"
+    t.jsonb "institution_metadata"
+    t.jsonb "raw_payload"
+    t.jsonb "raw_transactions_payload"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["basiq_item_id", "account_id"], name: "index_basiq_accounts_on_basiq_item_id_and_account_id", unique: true
+    t.index ["basiq_item_id"], name: "index_basiq_accounts_on_basiq_item_id"
+    t.index ["connection_id"], name: "index_basiq_accounts_on_connection_id"
+    t.index ["institution_id"], name: "index_basiq_accounts_on_institution_id"
+  end
+
+  create_table "basiq_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.uuid "family_id", null: false
+    t.string "name", null: false
+    t.string "basiq_user_id", null: false
+    t.string "status", default: "good", null: false
+    t.boolean "scheduled_for_deletion", default: false, null: false
+    t.boolean "pending_account_setup", default: false, null: false
+    t.date "sync_start_date"
+    t.jsonb "pending_job_ids", default: [], null: false
+    t.jsonb "raw_payload"
+    t.jsonb "raw_connections_payload"
+    t.jsonb "raw_institution_payload"
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["basiq_user_id"], name: "index_basiq_items_on_basiq_user_id", unique: true
+    t.index ["family_id"], name: "index_basiq_items_on_family_id"
+    t.index ["status"], name: "index_basiq_items_on_status"
   end
 
   create_table "budget_categories", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -657,9 +699,9 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_29_200129) do
     t.string "exchange_operating_mic_col_label"
     t.string "amount_type_strategy", default: "signed_amount"
     t.string "amount_type_inflow_value"
-    t.integer "rows_to_skip", default: 0, null: false
     t.integer "rows_count", default: 0, null: false
     t.string "amount_type_identifier_value"
+    t.integer "rows_to_skip", default: 0, null: false
     t.text "ai_summary"
     t.string "document_type"
     t.jsonb "extracted_data"
@@ -1174,7 +1216,6 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_29_200129) do
   create_table "snaptrade_accounts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "snaptrade_item_id", null: false
     t.string "name"
-    t.string "account_id"
     t.string "snaptrade_account_id"
     t.string "snaptrade_authorization_id"
     t.string "account_number"
@@ -1192,11 +1233,10 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_29_200129) do
     t.jsonb "raw_activities_payload", default: []
     t.datetime "last_holdings_sync"
     t.datetime "last_activities_sync"
+    t.boolean "activities_fetch_pending", default: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.boolean "activities_fetch_pending", default: false
     t.date "sync_start_date"
-    t.index ["account_id"], name: "index_snaptrade_accounts_on_account_id", unique: true
     t.index ["snaptrade_account_id"], name: "index_snaptrade_accounts_on_snaptrade_account_id", unique: true
     t.index ["snaptrade_item_id"], name: "index_snaptrade_accounts_on_snaptrade_item_id"
   end
@@ -1334,15 +1374,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_29_200129) do
     t.datetime "updated_at", null: false
     t.string "currency"
     t.jsonb "locked_attributes", default: {}
-    t.decimal "realized_gain", precision: 19, scale: 4
-    t.decimal "cost_basis_amount", precision: 19, scale: 4
-    t.string "cost_basis_currency"
-    t.integer "holding_period_days"
-    t.string "realized_gain_confidence"
-    t.string "realized_gain_currency"
     t.string "investment_activity_label"
     t.index ["investment_activity_label"], name: "index_trades_on_investment_activity_label"
-    t.index ["realized_gain"], name: "index_trades_on_realized_gain_not_null", where: "(realized_gain IS NOT NULL)"
     t.index ["security_id"], name: "index_trades_on_security_id"
   end
 
@@ -1442,6 +1475,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_01_29_200129) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "api_keys", "users"
   add_foreign_key "balances", "accounts", on_delete: :cascade
+  add_foreign_key "basiq_accounts", "basiq_items"
+  add_foreign_key "basiq_items", "families"
   add_foreign_key "budget_categories", "budgets"
   add_foreign_key "budget_categories", "categories"
   add_foreign_key "budgets", "families"

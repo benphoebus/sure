@@ -1,6 +1,6 @@
 <%# locals: (path:, accountable_type:, provider_configs:) %>
 
-<%= render layout: "accounts/new/container", locals: { title: t(".title"), back_path: new_account_path } do %>
+<%= render layout: "accounts/new/container", locals: { title: t(".title"), back_path: new_account_path(region: @provider_region) } do %>
   <div class="text-sm"
        <% if provider_configs.any? { |c| c[:key] == "lunchflow" } %>
          data-controller="lunchflow-preload"
@@ -9,6 +9,17 @@
            data-lunchflow-preload-return-to-value="<%= h(params[:return_to]) %>"
          <% end %>
        <% end %>>
+    <div class="grid grid-cols-2 gap-1 p-1 mb-2 bg-surface rounded-lg">
+      <% [["us", "USA"], ["au", "AUS"]].each do |region, label| %>
+        <%= link_to label,
+                    new_polymorphic_path(accountable_type.constantize.new, step: "method_select", return_to: params[:return_to], region: region),
+                    class: class_names(
+                      "text-center rounded-md px-3 py-2 text-sm font-medium",
+                      @provider_region == region ? "bg-container text-primary shadow-border-xs" : "text-secondary hover:text-primary"
+                    ) %>
+      <% end %>
+    </div>
+
     <%# Manual entry option %>
     <%= link_to path, class: "flex items-center gap-4 w-full text-center text-primary focus:outline-hidden focus:bg-surface border border-transparent focus:border focus:border-gray-200 px-2 hover:bg-surface rounded-lg p-2" do %>
       <span class="flex w-8 h-8 shrink-0 grow-0 items-center justify-center rounded-lg bg-alpha-black-50 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.02)]">
@@ -21,14 +32,22 @@
     <% provider_configs.each do |config| %>
       <% link_path = config[:new_account_path].call(accountable_type, params[:return_to]) %>
       <% is_lunchflow = config[:key] == "lunchflow" %>
+      <% is_external_redirect = config[:external_redirect] %>
+      <% link_data = if is_external_redirect
+           { turbo: false }
+         elsif is_lunchflow
+           {
+             turbo_frame: "modal",
+             turbo_action: "advance",
+             lunchflow_preload_target: "link"
+           }
+         else
+           { turbo_frame: "modal" }
+         end %>
 
       <%= link_to link_path,
                   class: "text-primary flex items-center gap-4 w-full text-center focus:outline-hidden focus:bg-surface border border-transparent focus:border focus:border-primary px-2 hover:bg-surface rounded-lg p-2",
-                  data: is_lunchflow ? {
-                    turbo_frame: "modal",
-                    turbo_action: "advance",
-                    lunchflow_preload_target: "link"
-                  } : { turbo_frame: "modal" } do %>
+                  data: link_data do %>
         <span class="flex w-8 h-8 shrink-0 grow-0 items-center justify-center rounded-lg bg-alpha-black-50 shadow-[inset_0_0_0_1px_rgba(0,0,0,0.02)]">
           <%= icon("link-2") %>
         </span>

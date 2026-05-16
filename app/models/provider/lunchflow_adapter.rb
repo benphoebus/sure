@@ -19,6 +19,7 @@ class Provider::LunchflowAdapter < Provider::Base
       name: "Lunch Flow",
       description: "Connect to your bank via Lunch Flow",
       can_connect: true,
+      regions: %w[us],
       new_account_path: ->(accountable_type, return_to) {
         Rails.application.routes.url_helpers.select_accounts_lunchflow_items_path(
           accountable_type: accountable_type,

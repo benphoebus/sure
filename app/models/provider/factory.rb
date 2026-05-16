@@ -90,9 +90,25 @@ class Provider::Factory
     # @param account_type [String] The account type class name (e.g., "Depository")
     # @param family [Family] The family to check connection availability for
     # @return [Array<Hash>] Array of connection configurations from all providers
-    def connection_configs_for_account_type(account_type:, family:)
-      adapters_for_account_type(account_type).flat_map do |adapter_class|
+    def connection_configs_for_account_type(account_type:, family:, region: nil)
+      configs = adapters_for_account_type(account_type).flat_map do |adapter_class|
         adapter_class.connection_configs(family: family)
+      end
+
+      filter_connection_configs_by_region(configs, region)
+    end
+
+    def filter_connection_configs_by_region(configs, region)
+      region = region.to_s.presence&.downcase
+      return configs if region.blank?
+
+      configs.select do |config|
+        regions = Array(config[:regions]).map(&:to_s)
+        if region == "au"
+          regions.include?("au")
+        else
+          regions.empty? || regions.include?(region)
+        end
       end
     end
 

@@ -82,6 +82,21 @@ Rails.application.routes.draw do
       post :new_connection
     end
   end
+
+  resources :basiq_items, only: [ :new, :destroy ] do
+    collection do
+      get :callback
+      get :select_existing_account
+      post :link_existing_account
+    end
+
+    member do
+      post :sync
+      get :setup_accounts
+      post :complete_account_setup
+      post :new_connection
+    end
+  end
   use_doorkeeper
   # MFA routes
   resource :mfa, controller: "mfa", only: [ :new, :create ] do
@@ -444,6 +459,7 @@ Rails.application.routes.draw do
   namespace :webhooks do
     post "plaid"
     post "plaid_eu"
+    post "basiq"
     post "stripe"
   end
 

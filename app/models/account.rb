@@ -178,6 +178,33 @@ class Account < ApplicationRecord
       )
     end
 
+    def create_from_basiq_account(basiq_account, account_type, subtype = nil)
+      balance = basiq_account.current_balance || 0
+
+      if account_type == "CreditCard" || account_type == "Loan"
+        balance = balance.abs
+      end
+
+      attributes = {
+        family: basiq_account.basiq_item.family,
+        name: basiq_account.name,
+        balance: balance,
+        cash_balance: balance,
+        currency: basiq_account.currency || "AUD"
+      }
+
+      accountable_attributes = {}
+      accountable_attributes[:subtype] = subtype if subtype.present?
+
+      create_and_sync(
+        attributes.merge(
+          accountable_type: account_type,
+          accountable_attributes: accountable_attributes
+        ),
+        skip_initial_sync: true
+      )
+    end
+
     def create_from_coinbase_account(coinbase_account)
       # All Coinbase accounts are crypto exchange accounts
       family = coinbase_account.coinbase_item.family

@@ -19,6 +19,7 @@ class Provider::SimplefinAdapter < Provider::Base
       name: "SimpleFIN",
       description: "Connect to your bank via SimpleFIN",
       can_connect: true,
+      regions: %w[us],
       new_account_path: ->(accountable_type, return_to) {
         Rails.application.routes.url_helpers.new_simplefin_item_path(
           accountable_type: accountable_type

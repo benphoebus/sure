@@ -4,6 +4,13 @@ class Settings::BankSyncController < ApplicationController
   def show
     @providers = [
       {
+        name: "BASIQ",
+        description: "Australian Open Banking connections with accounts and transactions.",
+        path: "https://api.basiq.io/reference/developer-hub",
+        target: "_blank",
+        rel: "noopener noreferrer"
+      },
+      {
         name: "Lunch Flow",
         description: "US, Canada, UK, EU, Brazil and Asia through multiple open banking providers.",
         path: "https://lunchflow.app/features/sure-integration",
