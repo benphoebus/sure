@@ -1,4 +1,5 @@
 require "cgi"
+require "digest"
 
 class Provider::Basiq
   include HTTParty
@@ -8,7 +9,7 @@ class Provider::Basiq
 
   attr_reader :api_key, :base_url, :version
 
-  TOKEN_CACHE_KEY = "basiq:server_access_token"
+  TOKEN_CACHE_KEY_PREFIX = "basiq:server_access_token"
   MAX_PAGINATION_PAGES = 100
 
   def initialize(api_key:, base_url: Rails.configuration.x.basiq.base_url, version: Rails.configuration.x.basiq.version)
@@ -18,7 +19,7 @@ class Provider::Basiq
   end
 
   def server_access_token
-    cached_token = Rails.cache.read(TOKEN_CACHE_KEY)
+    cached_token = Rails.cache.read(token_cache_key)
     return cached_token if cached_token.present?
 
     token_data = request_token(scope: "SERVER_ACCESS")
@@ -26,7 +27,7 @@ class Provider::Basiq
     expires_in = (token_data[:expires_in] || token_data["expires_in"] || 3600).to_i
     raise BasiqError.new("BASIQ token response did not include access_token", :token_failed) if token.blank?
 
-    Rails.cache.write(TOKEN_CACHE_KEY, token, expires_in: [ expires_in - 60, 60 ].max.seconds)
+    Rails.cache.write(token_cache_key, token, expires_in: [ expires_in - 60, 60 ].max.seconds)
     token
   end
 
@@ -176,6 +177,11 @@ class Provider::Basiq
       }
     end
 
+    def token_cache_key
+      cache_identity = [ base_url, version, api_key ].join(":")
+      "#{TOKEN_CACHE_KEY_PREFIX}:#{Digest::SHA256.hexdigest(cache_identity)}"
+    end
+
     def handle_response(response)
       case response.code
       when 200, 201, 202
@@ -183,7 +189,7 @@ class Provider::Basiq
       when 400
         raise BasiqError.new("Bad request to BASIQ API: #{response.body}", :bad_request)
       when 401
-        Rails.cache.delete(TOKEN_CACHE_KEY)
+        Rails.cache.delete(token_cache_key)
         raise BasiqError.new("Invalid or expired BASIQ credentials", :unauthorized)
       when 403
         raise BasiqError.new("BASIQ access forbidden", :access_forbidden)

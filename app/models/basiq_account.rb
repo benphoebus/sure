@@ -44,8 +44,8 @@ class BasiqAccount < ApplicationRecord
       current_balance: parse_decimal(snapshot[:balance]),
       available_balance: parse_decimal(snapshot[:availableFunds] || snapshot[:available_funds]),
       account_status: snapshot[:status],
-      account_type: snapshot[:class] || snapshot[:accountType] || snapshot[:type],
-      account_subtype: snapshot[:product],
+      account_type: extract_account_type(snapshot),
+      account_subtype: extract_account_product(snapshot),
       provider: "basiq",
       masked_number: snapshot[:accountNo] || snapshot[:account_number],
       institution_metadata: extract_institution_metadata(snapshot),
@@ -77,6 +77,8 @@ class BasiqAccount < ApplicationRecord
       connection = snapshot[:connection]
       if connection.is_a?(Hash)
         connection[:id] || connection["id"]
+      elsif connection.present?
+        connection
       else
         snapshot[:connectionId] || snapshot[:connection_id]
       end
@@ -85,8 +87,27 @@ class BasiqAccount < ApplicationRecord
     def extract_institution_id(snapshot)
       institution = snapshot[:institution]
       return institution[:id] || institution["id"] if institution.is_a?(Hash)
+      return institution if institution.present?
 
       snapshot[:institutionId] || snapshot[:institution_id]
+    end
+
+    def extract_account_type(snapshot)
+      account_class = snapshot[:class]
+      if account_class.is_a?(Hash)
+        account_class[:type] || account_class["type"]
+      else
+        account_class || snapshot[:accountType] || snapshot[:account_type] || snapshot[:type]
+      end
+    end
+
+    def extract_account_product(snapshot)
+      account_class = snapshot[:class]
+      if account_class.is_a?(Hash)
+        account_class[:product] || account_class["product"]
+      else
+        snapshot[:product]
+      end
     end
 
     def extract_institution_metadata(snapshot)
