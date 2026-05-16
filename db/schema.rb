@@ -1413,9 +1413,7 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_01_100000) do
   create_table "users", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.uuid "family_id", null: false
     t.string "first_name"
-    t.string "middle_name"
     t.string "last_name"
-    t.string "mobile_number"
     t.string "email"
     t.string "password_digest"
     t.datetime "created_at", null: false
@@ -1441,6 +1439,8 @@ ActiveRecord::Schema[7.2].define(version: 2026_02_01_100000) do
     t.string "default_account_order", default: "name_asc"
     t.jsonb "preferences", default: {}, null: false
     t.string "locale"
+    t.string "middle_name"
+    t.string "mobile_number"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["family_id"], name: "index_users_on_family_id"
     t.index ["last_viewed_chat_id"], name: "index_users_on_last_viewed_chat_id"

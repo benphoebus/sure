@@ -33,12 +33,17 @@ class BasiqItem < ApplicationRecord
     Provider::BasiqAdapter.configured?
   end
 
-  def start_consent(action: "connect", state: id)
+  def start_consent(action: "connect", state: id, user:)
     provider = basiq_provider
     raise StandardError.new("BASIQ provider is not configured") unless provider
+    raise StandardError.new("BASIQ requires #{user.basiq_profile_missing_fields.to_sentence}") unless user.basiq_profile_complete?
 
-    client_token = provider.client_access_token(user_id: basiq_user_id)
-    provider.consent_url(client_token: client_token, state: state, action: action)
+    auth_link = provider.create_auth_link(
+      user_id: basiq_user_id,
+      mobile: user.basiq_profile_payload[:mobile]
+    )
+
+    provider.auth_link_url(auth_link: auth_link, state: state, action: action)
   end
 
   def refresh_basiq_profile!(user)

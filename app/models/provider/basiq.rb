@@ -48,6 +48,25 @@ class Provider::Basiq
     post_json("/users/#{escape(user_id)}", profile)
   end
 
+  def create_auth_link(user_id:, mobile:)
+    body = {}
+    body[:mobile] = mobile if mobile.present?
+
+    post_json("/users/#{escape(user_id)}/auth_link", body)
+  end
+
+  def auth_link_url(auth_link:, state:, action: nil)
+    public_url = auth_link.dig(:links, :public) || auth_link.dig("links", "public")
+    raise BasiqError.new("BASIQ auth link response did not include public link", :auth_link_failed) if public_url.blank?
+
+    uri = URI.parse(public_url)
+    params = Rack::Utils.parse_nested_query(uri.query)
+    params["state"] = state if state.present?
+    params["action"] = action if action.present?
+    uri.query = URI.encode_www_form(params)
+    uri.to_s
+  end
+
   def get_user(user_id)
     get_json("/users/#{escape(user_id)}")
   end

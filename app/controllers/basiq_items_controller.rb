@@ -21,7 +21,7 @@ class BasiqItemsController < ApplicationController
 
     basiq_item = Current.family.basiq_item_for_connection(user: Current.user)
     Rails.logger.info("BASIQ consent start: basiq_item_id=#{basiq_item.id} basiq_user_id=#{basiq_item.basiq_user_id}") if Rails.configuration.x.basiq.debug_raw
-    redirect_url = basiq_item.start_consent(action: "connect", state: basiq_item.id)
+    redirect_url = basiq_item.start_consent(action: "connect", state: basiq_item.id, user: Current.user)
     log_basiq_redirect(redirect_url, state: basiq_item.id)
 
     safe_redirect_to_basiq(
@@ -44,7 +44,7 @@ class BasiqItemsController < ApplicationController
       return
     end
 
-    basiq_item = Current.family.basiq_items.find_by(id: params[:state])
+    basiq_item = basiq_item_from_callback
 
     unless basiq_item
       redirect_to accounts_path, alert: "BASIQ connection not found."
@@ -81,7 +81,7 @@ class BasiqItemsController < ApplicationController
 
     @basiq_item.refresh_basiq_profile!(Current.user)
     Rails.logger.info("BASIQ consent start: basiq_item_id=#{@basiq_item.id} basiq_user_id=#{@basiq_item.basiq_user_id}") if Rails.configuration.x.basiq.debug_raw
-    redirect_url = @basiq_item.start_consent(action: "connect", state: @basiq_item.id)
+    redirect_url = @basiq_item.start_consent(action: "connect", state: @basiq_item.id, user: Current.user)
     log_basiq_redirect(redirect_url, state: @basiq_item.id)
 
     safe_redirect_to_basiq(
@@ -237,6 +237,13 @@ class BasiqItemsController < ApplicationController
       end.map(&:to_s).map(&:strip).reject(&:blank?)
     end
 
+    def basiq_item_from_callback
+      return Current.family.basiq_items.find_by(id: params[:state]) if params[:state].present?
+
+      active_items = Current.family.basiq_items.active.to_a
+      active_items.first if active_items.one?
+    end
+
     def valid_basiq_redirect_url?(url)
       return false if url.blank?
 
@@ -266,9 +273,10 @@ class BasiqItemsController < ApplicationController
       uri = URI.parse(redirect_url)
       params = Rack::Utils.parse_nested_query(uri.query)
       params["token"] = "[FILTERED]" if params.key?("token")
+      path = uri.host == "connect.basiq.io" ? "[FILTERED]" : uri.path
 
       Rails.logger.info(
-        "BASIQ consent redirect: host=#{uri.host} path=#{uri.path} state=#{state} params=#{params.inspect}"
+        "BASIQ consent redirect: host=#{uri.host} path=#{path} state=#{state} params=#{params.inspect}"
       )
     rescue URI::InvalidURIError => e
       Rails.logger.warn("BASIQ consent redirect parse failed: #{e.message}")

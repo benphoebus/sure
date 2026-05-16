@@ -63,6 +63,64 @@ class Provider::BasiqTest < ActiveSupport::TestCase
     assert_equal({ id: "user-123" }, provider.create_user(profile: profile))
   end
 
+  test "create_auth_link posts mobile to BASIQ auth link endpoint" do
+    provider = Provider::Basiq.new(
+      api_key: "key-one",
+      base_url: "https://au-api.basiq.io",
+      version: "3.0"
+    )
+    provider.stubs(:server_access_token).returns("server-token")
+
+    Provider::Basiq.expects(:post).with(
+      "https://au-api.basiq.io/users/user-123/auth_link",
+      has_entries(
+        headers: has_entries(
+          "Authorization" => "Bearer server-token",
+          "Content-Type" => "application/json",
+          "basiq-version" => "3.0"
+        ),
+        body: { mobile: "+61410888666" }.to_json
+      )
+    ).returns(
+      OpenStruct.new(
+        code: 201,
+        body: {
+          type: "auth_link",
+          userId: "user-123",
+          links: { public: "https://connect.basiq.io/link-123" }
+        }.to_json
+      )
+    )
+
+    response = provider.create_auth_link(user_id: "user-123", mobile: "+61410888666")
+
+    assert_equal "https://connect.basiq.io/link-123", response.dig(:links, :public)
+  end
+
+  test "auth_link_url adds connect action and callback state" do
+    provider = Provider::Basiq.new(
+      api_key: "key-one",
+      base_url: "https://au-api.basiq.io",
+      version: "3.0"
+    )
+
+    url = provider.auth_link_url(
+      auth_link: { links: { public: "https://connect.basiq.io/link-123?existing=true" } },
+      state: "basiq-item-123",
+      action: "connect"
+    )
+
+    uri = URI.parse(url)
+    params = Rack::Utils.parse_nested_query(uri.query)
+
+    assert_equal "https", uri.scheme
+    assert_equal "connect.basiq.io", uri.host
+    assert_equal "/link-123", uri.path
+    assert_equal "true", params["existing"]
+    assert_equal "basiq-item-123", params["state"]
+    assert_equal "connect", params["action"]
+  end
+
   test "retries bearer request once after unauthorized response" do
     provider = Provider::Basiq.new(
       api_key: "key-one",
